@@ -15,20 +15,20 @@ function e($s) { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8
 $userId = Auth::id();
 $role = Auth::role();
 
-// Check success message
 $successMessage = $_SESSION['delete_success'] ?? '';
 unset($_SESSION['delete_success']);
 
-// Check if created_by column exists
-$created_by_exists = false;
-$colRes = $conn->query("SHOW COLUMNS FROM `events` LIKE 'created_by'");
-if ($colRes && $colRes->num_rows > 0) $created_by_exists = true;
-
-// Get ALL approved events (like students see)
+// Get ALL approved events
 $sql = "SELECT e.id, e.title, e.description, e.image, e.status, e.created_at, 
-        u.name as creator_name, e.created_by
+        e.created_by_type, e.created_by_id,
+        CASE 
+            WHEN e.created_by_type = 'admin' THEN a.name
+            WHEN e.created_by_type = 'teacher' THEN t.name
+            ELSE 'Unknown'
+        END as creator_name
         FROM events e
-        LEFT JOIN users u ON e.created_by = u.id
+        LEFT JOIN admins a ON e.created_by_type = 'admin' AND e.created_by_id = a.id
+        LEFT JOIN teachers t ON e.created_by_type = 'teacher' AND e.created_by_id = t.id
         WHERE e.status = 'approved'
         ORDER BY e.created_at DESC";
 $allEvents = $conn->query($sql);
@@ -42,26 +42,24 @@ $stats = [
     'rejected' => 0
 ];
 
-if ($created_by_exists) {
-    $statsQuery = $conn->prepare("SELECT status, COUNT(*) as count FROM events WHERE created_by = ? GROUP BY status");
-    $statsQuery->bind_param('i', $userId);
-    $statsQuery->execute();
-    $statsResult = $statsQuery->get_result();
-    while ($row = $statsResult->fetch_assoc()) {
-        $stats[$row['status']] = $row['count'];
-        $stats['total'] += $row['count'];
-    }
-    
-    // Get my events
-    $myStmt = $conn->prepare("SELECT id, title, description, image, status, created_at 
-                              FROM events 
-                              WHERE created_by = ? 
-                              ORDER BY created_at DESC 
-                              LIMIT 5");
-    $myStmt->bind_param('i', $userId);
-    $myStmt->execute();
-    $myEvents = $myStmt->get_result();
+$statsQuery = $conn->prepare("SELECT status, COUNT(*) as count FROM events WHERE created_by_type = 'teacher' AND created_by_id = ? GROUP BY status");
+$statsQuery->bind_param('i', $userId);
+$statsQuery->execute();
+$statsResult = $statsQuery->get_result();
+while ($row = $statsResult->fetch_assoc()) {
+    $stats[$row['status']] = $row['count'];
+    $stats['total'] += $row['count'];
 }
+
+// Get my recent events
+$myStmt = $conn->prepare("SELECT id, title, description, image, status, created_at 
+                          FROM events 
+                          WHERE created_by_type = 'teacher' AND created_by_id = ? 
+                          ORDER BY created_at DESC 
+                          LIMIT 5");
+$myStmt->bind_param('i', $userId);
+$myStmt->execute();
+$myEvents = $myStmt->get_result();
 ?>
 <!doctype html>
 <html lang="en">
@@ -128,34 +126,137 @@ if ($created_by_exists) {
       font-weight: 700;
       margin-left: 0.5rem;
     }
+  .user-menu-wrapper {
+    position: relative;
+  }
+  .user-info {
+    cursor: pointer;
+    user-select: none;
+  }
+  .user-info::after {
+    content: "▼";
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    opacity: 0.6;
+    transition: var(--transition);
+  }
+  .user-menu-wrapper.active .user-info::after {
+    transform: rotate(180deg);
+  }
+  .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 0.75rem);
+    right: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    min-width: 220px;
+    display: none;
+    z-index: 1000;
+    overflow: hidden;
+  }
+  .user-menu-wrapper.active .dropdown-menu {
+    display: block;
+  }
+  .dropdown-menu a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: var(--transition);
+    border-bottom: 1px solid var(--border-light);
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .dropdown-menu a:last-child {
+    border-bottom: none;
+  }
+  .dropdown-menu a:hover {
+    background: var(--bg-secondary);
+    color: var(--primary);
+  }
+  .dropdown-menu a i {
+    width: 1.25rem;
+    text-align: center;
+    opacity: 0.7;
+  }
+  .header-right .nav-links {
+    display: none;
+  }
+  .stat-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-left: 4px solid var(--primary);
+}
+.stat-card.pending {
+  border-left-color: #f59e0b;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+.stat-card.approved {
+  border-left-color: #10b981;
+  background: linear-gradient(135deg, #f0fdf4 0%, #d1fae5 100%);
+}
+.stat-card.rejected {
+  border-left-color: #ef4444;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+}
+.stat-card.users {
+  border-left-color: #3b82f6;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+}
+.stat-card .stat-number {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+.stat-card .stat-label {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
   </style>
 </head>
 <body>
   <div class="page-wrapper">
-    <header>
-      <div class="header-content">
-        <div class="header-left">
-          <h1><i class="fas fa-chalkboard-teacher"></i> Teacher Dashboard</h1>
-        </div>
-        <div class="header-right">
-          <div class="user-info">
-            <div class="user-avatar"><?= strtoupper(substr(Auth::name(), 0, 1)) ?></div>
-            <div>
-              <div><?= e(Auth::name()) ?></div>
-              <span class="user-role-badge badge-teacher"><?= e($role) ?></span>
-            </div>
+<header>
+  <div class="header-content">
+    <div class="header-left">
+      <h1>Event Management System</h1>
+    </div>
+    <div class="header-right">
+      <div class="user-menu-wrapper">
+        <div class="user-info">
+          <div class="user-avatar"><?= strtoupper(substr(Auth::name(), 0, 1)) ?></div>
+          <div>
+            <div><?= e(Auth::name()) ?></div>
+            <span class="user-role-badge badge-<?= e($role) ?>"><?= e($role) ?></span>
           </div>
-          <nav class="nav-links">
+        </div>
+        <div class="dropdown-menu">
+          <?php if ($role === 'admin'): ?>
+            <a href="profile.php"><i class="fa-solid fa-user"></i> Profile</a>
             <a href="events/create.php"><i class="fas fa-plus"></i> Create Event</a>
-            <?php if ($role === 'admin'): ?>
-              <a href="dashboard_admin.php"><i class="fas fa-shield-alt"></i> Admin Panel</a>
-            <?php endif; ?>
-            <a href="settings.php"><i class="fas fa-cog"></i> Settings</a>
+            <a href="admin_manage_users.php"><i class="fas fa-users-cog"></i> Manage Users</a>
+            <a href="dashboard_student.php"><i class="fas fa-eye"></i> Student View</a>
+            <a href="settings.php"><i class="fa-solid fa-key"></i> Change Password</a>
             <a href="logout.php" style="color: var(--error);"><i class="fas fa-sign-out-alt"></i> Logout</a>
-          </nav>
+          <?php elseif ($role === 'teacher'): ?>
+            <a href="profile.php"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="events/create.php"><i class="fas fa-plus"></i> Create Event</a>
+            <a href="settings.php"><i class="fa-solid fa-key"></i> Change Password</a>
+            <a href="logout.php" style="color: var(--error);"><i class="fas fa-sign-out-alt"></i> Logout</a>
+          <?php else: ?>
+            <a href="profile.php"><i class="fa-solid fa-user"></i> Profile</a>
+            <a href="settings.php"><i class="fa-solid fa-key"></i> Change Password</a>
+            <a href="logout.php" style="color: var(--error);"><i class="fas fa-sign-out-alt"></i> Logout</a>
+          <?php endif; ?>
         </div>
       </div>
-    </header>
+    </div>
+  </div>
+</header>
 
     <main>
       <div class="container">
@@ -170,8 +271,7 @@ if ($created_by_exists) {
           </div>
         <?php endif; ?>
 
-        <?php if ($created_by_exists && $stats['total'] > 0): ?>
-        <!-- My Statistics -->
+        <?php if ($stats['total'] > 0): ?>
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-number"><?= $stats['total'] ?></div>
@@ -192,7 +292,6 @@ if ($created_by_exists) {
         </div>
         <?php endif; ?>
 
-        <!-- My Recent Events -->
         <?php if ($myEvents && $myEvents->num_rows > 0): ?>
         <h3 class="section-title"><i class="fas fa-clipboard-list"></i> My Recent Events</h3>
         <div class="event-grid">
@@ -226,7 +325,6 @@ if ($created_by_exists) {
         </div>
         <?php endif; ?>
 
-        <!-- All Approved Events -->
         <h3 class="section-title"><i class="fas fa-calendar-check"></i> All Upcoming Events</h3>
         <?php if (!$allEvents || $allEvents->num_rows === 0): ?>
           <div class="card">
@@ -240,7 +338,7 @@ if ($created_by_exists) {
         <?php else: ?>
           <div class="event-grid">
             <?php while ($row = $allEvents->fetch_assoc()): 
-              $isOwner = $created_by_exists && (int)$row['created_by'] === $userId;
+              $isOwner = ($row['created_by_type'] === 'teacher' && (int)$row['created_by_id'] === $userId);
             ?>
               <article class="card">
                 <?php if (!empty($row['image'])): ?>
@@ -270,7 +368,6 @@ if ($created_by_exists) {
                 <div class="card-footer">
                   <a href="events/view.php?id=<?= (int)$row['id'] ?>" class="btn btn-sm" style="width: 100%;">View Details →</a>
                   <?php if ($isOwner): ?>
-                    <!-- Only show edit/delete for own events -->
                     <a href="events/edit.php?id=<?= (int)$row['id'] ?>" class="btn btn-sm btn-outline"><i class="fas fa-edit"></i> Edit</a>
                     <a href="events/delete.php?id=<?= (int)$row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Delete this event?')"><i class="fas fa-trash-alt"></i> Delete</a>
                   <?php endif; ?>
@@ -283,4 +380,23 @@ if ($created_by_exists) {
     </main>
   </div>
 </body>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const userMenuWrapper = document.querySelector('.user-menu-wrapper');
+    const userInfo = document.querySelector('.user-info');
+    
+    if (userMenuWrapper && userInfo) {
+      userInfo.addEventListener('click', function(e) {
+        e.stopPropagation();
+        userMenuWrapper.classList.toggle('active');
+      });
+      
+      document.addEventListener('click', function(e) {
+        if (!userMenuWrapper.contains(e.target)) {
+          userMenuWrapper.classList.remove('active');
+        }
+      });
+    }
+  });
+</script>
 </html>

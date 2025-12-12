@@ -3,16 +3,12 @@ if (!defined('APP_INIT')) {
     die('Direct access not permitted');
 }
 
-// Start session AFTER security config is loaded
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 require_once __DIR__ . '/config.php';
 
-/* ----------------------
-   Role & Permission Management
-   ---------------------- */
 class Role {
     const STUDENT = 'student';
     const TEACHER = 'teacher';
@@ -31,6 +27,16 @@ class Role {
         return null;
     }
     
+    public static function getTableName(string $role): ?string {
+        $role = self::normalize($role);
+        switch ($role) {
+            case self::ADMIN: return 'admins';
+            case self::TEACHER: return 'teachers';
+            case self::STUDENT: return 'students';
+            default: return null;
+        }
+    }
+    
     public static function canCreateEvents(string $role): bool {
         return in_array($role, [self::TEACHER, self::ADMIN], true);
     }
@@ -39,46 +45,39 @@ class Role {
         return $role === self::ADMIN;
     }
     
-    public static function canEditEvent(string $role, int $eventCreatorId, int $currentUserId): bool {
+    public static function canEditEvent(string $role, string $eventCreatorType, int $eventCreatorId, int $currentUserId): bool {
         if ($role === self::ADMIN) return true;
-        if ($role === self::TEACHER) return $eventCreatorId === $currentUserId;
+        if ($role === self::TEACHER && $eventCreatorType === 'teacher') {
+            return $eventCreatorId === $currentUserId;
+        }
         return false;
     }
 }
 
-/* ----------------------
-   Authentication Class
-   ---------------------- */
 class Auth {
     
-    // Check if user is logged in
     public static function check(): bool {
         return !empty($_SESSION['user_id']) && 
                !empty($_SESSION['user_name']) && 
                !empty($_SESSION['role']);
     }
     
-    // Get current user ID
     public static function id(): ?int {
         return isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
     }
     
-    // Get current user name
     public static function name(): ?string {
         return $_SESSION['user_name'] ?? null;
     }
     
-    // Get current user email
     public static function email(): ?string {
         return $_SESSION['email'] ?? null;
     }
     
-    // Get current user role
     public static function role(): ?string {
         return Role::normalize($_SESSION['role'] ?? null);
     }
     
-    // Check if user has specific role
     public static function hasRole($roles): bool {
         $userRole = self::role();
         if (!$userRole) return false;
@@ -89,7 +88,6 @@ class Auth {
         return in_array($userRole, $allowed, true);
     }
     
-    // Require authentication
     public static function requireLogin(string $redirect = 'index.php'): void {
         if (!self::check()) {
             $_SESSION['intended_url'] = $_SERVER['REQUEST_URI'] ?? null;
@@ -98,7 +96,6 @@ class Auth {
         }
     }
     
-    // Require specific role
     public static function requireRole($roles, bool $showError = true): void {
         self::requireLogin();
         
@@ -135,7 +132,6 @@ class Auth {
         }
     }
     
-    // Get appropriate dashboard URL for user
     public static function getDashboardUrl(): string {
         $role = self::role();
         switch ($role) {
@@ -148,7 +144,6 @@ class Auth {
         }
     }
     
-    // Login user
     public static function login(array $user): void {
         session_regenerate_id(true);
         
@@ -159,13 +154,11 @@ class Auth {
         $_SESSION['login_time'] = time();
         $_SESSION['last_activity'] = time();
         
-        // Reset rate limits on successful login
         if (class_exists('RateLimit')) {
             RateLimit::reset('login');
         }
     }
     
-    // Logout user
     public static function logout(string $redirect = 'index.php'): void {
         $_SESSION = [];
         
@@ -187,7 +180,6 @@ class Auth {
         exit;
     }
     
-    // Check session timeout (30 minutes of inactivity)
     public static function checkTimeout(int $maxInactivity = 1800): void {
         if (!self::check()) return;
         
@@ -201,5 +193,4 @@ class Auth {
     }
 }
 
-// Check session timeout on every request
 Auth::checkTimeout();

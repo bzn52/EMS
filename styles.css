@@ -345,7 +345,7 @@ textarea {
   min-height: 120px;
 }
 
-/* Password toggle */
+/* Password toggle - must come BEFORE button styles to allow override */
 .password-toggle {
   position: relative;
   margin-bottom: 1.5rem;
@@ -379,22 +379,12 @@ textarea {
 .password-toggle button:hover,
 .password-toggle .toggle-password:hover {
   color: var(--primary);
+  background: none;
+  transform: translateY(-50%);
+  box-shadow: none;
 }
 
-.form-box p {
-  text-align: center;
-  margin-top: var(--space-6);
-  margin-bottom: var(--space-4);
-  color: var(--text-secondary);
-  font-size: 0.9375rem;
-  line-height: 1.6;
-}
-
-.form-box p:last-child {
-  margin-bottom: 0;
-}
-
-/* Buttons */
+/* Buttons - specific styles to override defaults */
 .btn,
 button[type="submit"] {
   width: 100%;
@@ -478,6 +468,19 @@ button[type="submit"]:active {
 
 .btn-warning:hover {
   background: #d97706;
+}
+
+.form-box p {
+  text-align: center;
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-4);
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.form-box p:last-child {
+  margin-bottom: 0;
 }
 
 /* Badge */
@@ -850,45 +853,93 @@ tbody tr:hover {
   color: var(--text-primary);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    padding: var(--space-4);
-  }
+/* User dropdown menu */
+.user-menu-wrapper {
+  position: relative;
+}
 
-  .container {
-    padding: var(--space-4);
-  }
+.user-info {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
 
-  .card {
-    padding: var(--space-6);
-  }
+.user-info::after {
+  content: "▼";
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  transition: var(--transition);
+}
 
-  .page-title {
-    font-size: 1.75rem;
-  }
+.user-menu-wrapper.active .user-info::after {
+  transform: rotate(180deg);
+}
 
-  .event-grid {
-    grid-template-columns: 1fr;
-  }
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.75rem);
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  min-width: 220px;
+  display: none;
+  z-index: 1000;
+  overflow: hidden;
+}
 
-  .stats-grid {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  }
+.user-menu-wrapper.active .dropdown-menu {
+  display: block;
+  animation: dropdownFadeIn 0.2s ease;
+}
 
-  .form-box {
-    margin: var(--space-4);
-    padding: var(--space-8);
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
-  .nav-links {
-    flex-direction: column;
-    width: 100%;
-  }
+.dropdown-menu a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: var(--transition);
+  border-bottom: 1px solid var(--border-light);
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
 
-  .nav-links a {
-    width: 100%;
-    text-align: center;
-  }
+.dropdown-menu a:last-child {
+  border-bottom: none;
+}
+
+.dropdown-menu a:hover {
+  background: var(--bg-secondary);
+  color: var(--primary);
+}
+
+.dropdown-menu a i {
+  width: 1.25rem;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.dropdown-menu a:hover i {
+  opacity: 1;
+}
+
+/* Hide original nav-links */
+.header-right .nav-links {
+  display: none;
 }

@@ -8,7 +8,6 @@ function e($s) {
     return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); 
 }
 
-// Only allow POST requests with CSRF token
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     die("Method not allowed. Use POST request.");
@@ -27,8 +26,7 @@ if (!$id || !in_array($action, ['approve', 'reject'], true)) {
     die("Invalid request parameters");
 }
 
-// Get event details
-$stmt = $conn->prepare("SELECT id, title, status, created_by FROM events WHERE id = ?");
+$stmt = $conn->prepare("SELECT id, title, status FROM events WHERE id = ?");
 $stmt->bind_param('i', $id);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -42,7 +40,6 @@ if (!$event) {
 
 $newStatus = $action === 'approve' ? 'approved' : 'rejected';
 
-// Update status
 $stmt = $conn->prepare("UPDATE events SET status = ?, approved_at = NOW(), approved_by = ? WHERE id = ?");
 $approvedBy = Auth::id();
 $stmt->bind_param('sii', $newStatus, $approvedBy, $id);
@@ -50,7 +47,6 @@ $stmt->bind_param('sii', $newStatus, $approvedBy, $id);
 if ($stmt->execute()) {
     $stmt->close();
     
-    // Redirect back
     if (isset($_POST['return']) && $_POST['return'] === 'view') {
         header('Location: view.php?id=' . $id);
     } else {

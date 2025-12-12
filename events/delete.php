@@ -10,8 +10,7 @@ if (!$id) {
     die("Missing event ID");
 }
 
-// Fetch event details
-$stmt = $conn->prepare("SELECT title, image, created_by FROM events WHERE id = ?");
+$stmt = $conn->prepare("SELECT title, image, created_by_type, created_by_id FROM events WHERE id = ?");
 $stmt->bind_param('i', $id);
 $stmt->execute();
 $res = $stmt->get_result();
@@ -27,9 +26,7 @@ $userId = Auth::id();
 $role = Auth::role();
 
 if ($role === 'teacher') {
-    // Check if this teacher created this event
-    if (!isset($row['created_by']) || (int)$row['created_by'] !== $userId) {
-        // NOT the creator - show error page
+    if ($row['created_by_type'] !== 'teacher' || (int)$row['created_by_id'] !== $userId) {
         ?>
         <!DOCTYPE html>
         <html lang="en">
@@ -61,15 +58,12 @@ if ($role === 'teacher') {
     }
 }
 
-// If we reach here, user has permission to delete
 $eventTitle = $row['title'];
 
-// Delete from database
 $stmt = $conn->prepare("DELETE FROM events WHERE id = ?");
 $stmt->bind_param('i', $id);
 
 if ($stmt->execute()) {
-    // Delete image file if exists
     if (!empty($row['image'])) {
         $imagePath = EVENTS_UPLOADS_DIR . '/' . $row['image'];
         if (file_exists($imagePath)) {
@@ -79,10 +73,8 @@ if ($stmt->execute()) {
     
     $stmt->close();
     
-    // Set success message
     $_SESSION['delete_success'] = "Event '{$eventTitle}' has been deleted successfully.";
     
-    // Redirect based on role
     if ($role === 'admin') {
         header('Location: ../dashboard_admin.php');
     } else {

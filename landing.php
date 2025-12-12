@@ -443,7 +443,7 @@ function e($s) {
     <!-- Header -->
     <div class="landing-header">
         <div class="header-content">
-            <h1><i class="fas fa-graduation-cap"></i> School Event</h1>
+            <h1>Event Management System</h1>
             <nav class="nav-links">
                 <a href="index.php?form=login"><i class="fas fa-sign-in-alt"></i> Login</a>
                 <a href="index.php?form=register"><i class="fas fa-user-plus"></i> Register</a>
