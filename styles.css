@@ -943,3 +943,39 @@ tbody tr:hover {
 .header-right .nav-links {
   display: none;
 }
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 2px solid var(--border-medium);
+  border-radius: var(--radius);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: var(--transition);
+  margin-bottom: var(--space-6);
+  width: fit-content;
+  cursor: pointer;
+}
+
+.back-button:hover {
+  background: var(--bg-primary);
+  color: var(--primary);
+  border-color: var(--primary);
+  transform: translateX(-2px);
+}
+
+.back-button i {
+  font-size: 0.875rem;
+}
+
+/* Back button container at top of main content */
+.back-button-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--space-8);
+  padding-top: var(--space-4);
+}
