@@ -22,7 +22,13 @@ $errors = [];
 
 $table = Role::getTableName($role);
 
-$stmt = $conn->prepare("SELECT id, name, email FROM $table WHERE id = ?");
+if ($role === 'student') {
+  $stmt = $conn->prepare("SELECT id, name, email, grade, section, roll_no FROM $table WHERE id = ?");
+} elseif ($role === 'teacher') {
+  $stmt = $conn->prepare("SELECT id, name, email, department, subjects FROM $table WHERE id = ?");
+} else {
+  $stmt = $conn->prepare("SELECT id, name, email FROM $table WHERE id = ?");
+}
 $stmt->bind_param('i', $uid);
 $stmt->execute();
 $userRow = $stmt->get_result()->fetch_assoc();
@@ -40,6 +46,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   } else {
     $newName = Input::text($_POST['name'] ?? '', 100);
     $newEmail = Input::email($_POST['email'] ?? '');
+
+    // Role-specific fields
+    $grade = Input::text($_POST['grade'] ?? '', 50);
+    $section = Input::text($_POST['section'] ?? '', 10);
+    $rollNo = Input::text($_POST['roll_no'] ?? '', 50);
+    $department = Input::text($_POST['department'] ?? '', 100);
+    $subjects = Input::text($_POST['subjects'] ?? '', 500);
 
     if (strlen($newName) < 2)
       $errors[] = 'Name must be at least 2 characters.';
@@ -67,14 +80,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-      $u = $conn->prepare("UPDATE $table SET name = ?, email = ? WHERE id = ?");
-      $u->bind_param('ssi', $newName, $newEmail, $uid);
+      if ($role === 'student') {
+        $u = $conn->prepare("UPDATE $table SET name = ?, email = ?, grade = ?, section = ?, roll_no = ? WHERE id = ?");
+        $u->bind_param('sssssi', $newName, $newEmail, $grade, $section, $rollNo, $uid);
+      } elseif ($role === 'teacher') {
+        $u = $conn->prepare("UPDATE $table SET name = ?, email = ?, department = ?, subjects = ? WHERE id = ?");
+        $u->bind_param('ssssi', $newName, $newEmail, $department, $subjects, $uid);
+      } else {
+        $u = $conn->prepare("UPDATE $table SET name = ?, email = ? WHERE id = ?");
+        $u->bind_param('ssi', $newName, $newEmail, $uid);
+      }
+      
       if ($u->execute()) {
         $messages[] = 'Profile updated successfully.';
         $_SESSION['user_name'] = $newName;
         $_SESSION['email'] = $newEmail;
         $userRow['name'] = $newName;
         $userRow['email'] = $newEmail;
+        if ($role === 'student') {
+          $userRow['grade'] = $grade;
+          $userRow['section'] = $section;
+          $userRow['roll_no'] = $rollNo;
+        } elseif ($role === 'teacher') {
+          $userRow['department'] = $department;
+          $userRow['subjects'] = $subjects;
+        }
       } else {
         $errors[] = 'Failed to update profile.';
       }
@@ -102,17 +132,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .user-info {
       cursor: pointer;
       user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
-    .user-info::after {
-      content: "▼";
-      margin-left: 0.5rem;
+    .user-info .arrow-icon {
       font-size: 0.75rem;
       opacity: 0.6;
       transition: var(--transition);
     }
 
-    .user-menu-wrapper.active .user-info::after {
+    .user-menu-wrapper.active .user-info .arrow-icon {
       transform: rotate(180deg);
     }
 
@@ -184,6 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div><?= e(Auth::name()) ?></div>
                 <span class="user-role-badge badge-<?= e($role) ?>"><?= e($role) ?></span>
               </div>
+              <i class="fas fa-chevron-down arrow-icon"></i>
             </div>
             <div class="dropdown-menu">
               <?php if ($role === 'admin'): ?>
@@ -249,8 +281,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <?php if ($role === 'student'): ?>
                 <div class="form-group">
                   <label class="form-label">Grade</label>
-                  <input type="text" name="grade" value="<?= e($userRow['grade'] ?? '') ?>"
-                    placeholder="e.g., 10th Grade">
+                  <input type="text" name="grade" value="<?= e($userRow['grade'] ?? '') ?>" placeholder="e.g., 10th">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Section</label>
+                  <input type="text" name="section" value="<?= e($userRow['section'] ?? '') ?>" placeholder="e.g., A">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Roll Number</label>
+                  <input type="text" name="roll_no" value="<?= e($userRow['roll_no'] ?? '') ?>" placeholder="e.g., 101">
+                </div>
+              <?php elseif ($role === 'teacher'): ?>
+                <div class="form-group">
+                  <label class="form-label">Department</label>
+                  <input type="text" name="department" value="<?= e($userRow['department'] ?? '') ?>" placeholder="e.g., Mathematics">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Subjects Assigned</label>
+                  <input type="text" name="subjects" value="<?= e($userRow['subjects'] ?? '') ?>" placeholder="e.g., Algebra, Geometry">
                 </div>
               <?php endif; ?>
 

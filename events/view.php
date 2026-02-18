@@ -49,15 +49,14 @@ if ($role === 'student' && ($event[EVENTS_STATUS_COL] ?? '') !== 'approved') {
       user-select: none;
     }
 
-    .user-info::after {
-      content: "▼";
+    .user-info .arrow-icon {
       margin-left: 0.5rem;
       font-size: 0.75rem;
       opacity: 0.6;
       transition: var(--transition);
     }
 
-    .user-menu-wrapper.active .user-info::after {
+    .user-menu-wrapper.active .user-info .arrow-icon {
       transform: rotate(180deg);
     }
 
@@ -129,6 +128,7 @@ if ($role === 'student' && ($event[EVENTS_STATUS_COL] ?? '') !== 'approved') {
                 <div><?= e(Auth::name()) ?></div>
                 <span class="user-role-badge badge-<?= e($role) ?>"><?= e($role) ?></span>
               </div>
+              <i class="fas fa-chevron-down arrow-icon"></i>
             </div>
             <div class="dropdown-menu">
               <?php if ($role === 'admin'): ?>
@@ -196,11 +196,11 @@ if ($role === 'student' && ($event[EVENTS_STATUS_COL] ?? '') !== 'approved') {
 
             <?php if ($role === 'admin'): ?>
               <?php if ($event[EVENTS_STATUS_COL] !== 'approved'): ?>
-                <a href="approve.php?id=<?= (int) $event['id'] ?>&action=approve" class="btn btn-sm btn-success">✓
+                <a href="approve.php?id=<?= (int) $event['id'] ?>&action=approve" class="btn btn-sm btn-success">Ã¢Å“â€œ
                   Approve</a>
               <?php endif; ?>
               <?php if ($event[EVENTS_STATUS_COL] !== 'rejected'): ?>
-                <a href="approve.php?id=<?= (int) $event['id'] ?>&action=reject" class="btn btn-sm btn-warning">✗ Reject</a>
+                <a href="approve.php?id=<?= (int) $event['id'] ?>&action=reject" class="btn btn-sm btn-warning">Ã¢Å“â€” Reject</a>
               <?php endif; ?>
             <?php endif; ?>
           </div>

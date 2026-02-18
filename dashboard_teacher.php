@@ -133,14 +133,13 @@ $myEvents = $myStmt->get_result();
     cursor: pointer;
     user-select: none;
   }
-  .user-info::after {
-    content: "▼";
+  .user-info .arrow-icon {
     margin-left: 0.5rem;
     font-size: 0.75rem;
     opacity: 0.6;
     transition: var(--transition);
   }
-  .user-menu-wrapper.active .user-info::after {
+  .user-menu-wrapper.active .user-info .arrow-icon {
     transform: rotate(180deg);
   }
   .dropdown-menu {
@@ -233,6 +232,7 @@ $myEvents = $myStmt->get_result();
             <div><?= e(Auth::name()) ?></div>
             <span class="user-role-badge badge-<?= e($role) ?>"><?= e($role) ?></span>
           </div>
+          <i class="fas fa-chevron-down arrow-icon"></i>
         </div>
         <div class="dropdown-menu">
           <?php if ($role === 'admin'): ?>
@@ -366,7 +366,7 @@ $myEvents = $myStmt->get_result();
                 </div>
                 
                 <div class="card-footer">
-                  <a href="events/view.php?id=<?= (int)$row['id'] ?>" class="btn btn-sm" style="width: 100%;">View Details →</a>
+                  <a href="events/view.php?id=<?= (int)$row['id'] ?>" class="btn btn-sm" style="width: 100%;">View Details Ã¢â€ â€™</a>
                   <?php if ($isOwner): ?>
                     <a href="events/edit.php?id=<?= (int)$row['id'] ?>" class="btn btn-sm btn-outline"><i class="fas fa-edit"></i> Edit</a>
                     <a href="events/delete.php?id=<?= (int)$row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Delete this event?')"><i class="fas fa-trash-alt"></i> Delete</a>

@@ -801,7 +801,7 @@ tbody tr:hover {
 }
 
 .password-requirements li::before {
-  content: "✓";
+  content: "Ã¢Å“â€œ";
   position: absolute;
   left: var(--space-2);
   color: var(--primary);
@@ -862,17 +862,18 @@ tbody tr:hover {
   cursor: pointer;
   user-select: none;
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.user-info::after {
-  content: "▼";
-  margin-left: 0.5rem;
+.user-info .arrow-icon {
   font-size: 0.75rem;
   opacity: 0.6;
   transition: var(--transition);
 }
 
-.user-menu-wrapper.active .user-info::after {
+.user-menu-wrapper.active .user-info .arrow-icon {
   transform: rotate(180deg);
 }
 

@@ -191,15 +191,14 @@ $role = Auth::role();
       user-select: none;
     }
 
-    .user-info::after {
-      content: "▼";
+    .user-info .arrow-icon {
       margin-left: 0.5rem;
       font-size: 0.75rem;
       opacity: 0.6;
       transition: var(--transition);
     }
 
-    .user-menu-wrapper.active .user-info::after {
+    .user-menu-wrapper.active .user-info .arrow-icon {
       transform: rotate(180deg);
     }
 
@@ -309,6 +308,7 @@ $role = Auth::role();
                 <div><?= e(Auth::name()) ?></div>
                 <span class="user-role-badge badge-<?= e($role) ?>"><?= e($role) ?></span>
               </div>
+              <i class="fas fa-chevron-down arrow-icon"></i>
             </div>
             <div class="dropdown-menu">
               <?php if ($role === 'admin'): ?>

@@ -1,5 +1,6 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
+if (session_status() === PHP_SESSION_NONE)
+    session_start();
 
 if (!defined('APP_INIT')) {
     define('APP_INIT', true);
@@ -13,17 +14,21 @@ if (Auth::check()) {
     exit;
 }
 
-function e($s) {
-    return htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+function e($s)
+{
+    return htmlspecialchars((string) $s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event Management System</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css"
+        integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="styles.css">
     <style>
         /* Landing Page Specific Styles */
@@ -364,7 +369,7 @@ function e($s) {
         }
 
         .user-card li:before {
-            content: "✓";
+            content: "Ã¢Å“â€œ";
             position: absolute;
             left: 0;
             color: var(--success);
@@ -439,14 +444,15 @@ function e($s) {
         }
     </style>
 </head>
+
 <body>
     <!-- Header -->
     <div class="landing-header">
         <div class="header-content">
             <h1>Event Management System</h1>
             <nav class="nav-links">
-                <a href="index.php?form=login"><i class="fas fa-sign-in-alt"></i> Login</a>
-                <a href="index.php?form=register"><i class="fas fa-user-plus"></i> Register</a>
+                <a href="login.php?form=login"><i class="fas fa-sign-in-alt"></i> Login</a>
+                <a href="login.php?form=register"><i class="fas fa-user-plus"></i> Register</a>
             </nav>
         </div>
     </div>
@@ -456,12 +462,13 @@ function e($s) {
         <div class="hero-content">
             <div class="hero-text">
                 <h2>Manage School Events Effortlessly</h2>
-                <p>A centralized platform for teachers to create events and students to discover what's happening at our school.</p>
+                <p>A centralized platform for teachers to create events and students to discover what's happening at our
+                    school.</p>
                 <div class="hero-buttons">
-                    <a href="index.php?form=login" class="hero-btn primary">
+                    <a href="login.php?form=login" class="hero-btn primary">
                         <i class="fas fa-sign-in-alt"></i> Login
                     </a>
-                    <a href="index.php?form=register" class="hero-btn secondary">
+                    <a href="login.php?form=register" class="hero-btn secondary">
                         <i class="fas fa-user-plus"></i> Sign Up
                     </a>
                 </div>
@@ -480,12 +487,14 @@ function e($s) {
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-pencil-alt"></i></div>
                 <h3>Easy Event Creation</h3>
-                <p>Teachers can quickly create events with descriptions, images, and important details in just a few clicks.</p>
+                <p>Teachers can quickly create events with descriptions, images, and important details in just a few
+                    clicks.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-binoculars"></i></div>
                 <h3>Browse Events</h3>
-                <p>Students can easily browse all approved school events and find activities that match their interests.</p>
+                <p>Students can easily browse all approved school events and find activities that match their interests.
+                </p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
@@ -567,10 +576,11 @@ function e($s) {
             <h2>Ready to Get Started?</h2>
             <p>Join our school event management platform and never miss an important school activity again.</p>
             <div class="cta-buttons">
-                <a href="index.php?form=register" class="cta-btn primary">Create Your Account</a>
-                <a href="index.php?form=login" class="cta-btn secondary">Already Have an Account?</a>
+                <a href="login.php?form=register" class="cta-btn primary">Create Your Account</a>
+                <a href="login.php?form=login" class="cta-btn secondary">Already Have an Account?</a>
             </div>
         </div>
     </section>
 </body>
+
 </html>
