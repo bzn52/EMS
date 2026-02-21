@@ -261,6 +261,7 @@ $role = Auth::role();
               <?php if ($role === 'admin'): ?>
                 <a href="profile.php"><i class="fa-solid fa-user"></i> Profile</a>
                 <a href="events/create.php"><i class="fas fa-plus"></i> Create Event</a>
+                <a href="events/report.php"><i class="fas fa-chart-bar"></i> Registration Report</a>
                 <a href="admin_manage_users.php"><i class="fas fa-users-cog"></i> Manage Users</a>
                 <a href="dashboard_student.php"><i class="fas fa-eye"></i> Student View</a>
                 <a href="settings.php"><i class="fa-solid fa-key"></i> Change Password</a>
@@ -315,6 +316,7 @@ $role = Auth::role();
             <h3 class="card-title">All Events</h3>
             <div style="display: flex; gap: 0.5rem;">
               <a href="events/create.php" class="btn btn-sm"><i class="fas fa-plus"></i> New Event</a>
+              <a href="events/report.php" class="btn btn-sm btn-outline"><i class="fas fa-chart-bar"></i> Report</a>
             </div>
           </div>
 

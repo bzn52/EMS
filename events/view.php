@@ -1,32 +1,71 @@
 <?php
-// View single event
-require_once __DIR__ . '/events_common.php';
+if (session_status() === PHP_SESSION_NONE)
+  session_start();
+if (!defined('APP_INIT'))
+  define('APP_INIT', true);
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../auth.php';
+
 Auth::requireLogin();
 
-$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-if (!$id) {
-  http_response_code(400);
-  die("Missing event ID");
+function e($s)
+{
+  return htmlspecialchars((string) $s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-$stmt = $conn->prepare("SELECT * FROM events WHERE id = ?");
+$role = Auth::role();
+$userId = Auth::id();
+$id = (int) ($_GET['id'] ?? 0);
+
+if (!$id) {
+  header('Location: ../dashboard_student.php');
+  exit;
+}
+
+// Fetch event with creator info
+$stmt = $conn->prepare(
+  "SELECT e.*, 
+     CASE 
+       WHEN e.created_by_type='admin' THEN a.name
+       WHEN e.created_by_type='teacher' THEN t.name
+       ELSE 'Unknown'
+     END as creator_name
+     FROM events e
+     LEFT JOIN admins a ON e.created_by_type='admin' AND e.created_by_id=a.id
+     LEFT JOIN teachers t ON e.created_by_type='teacher' AND e.created_by_id=t.id
+     WHERE e.id=?"
+);
 $stmt->bind_param('i', $id);
 $stmt->execute();
-$res = $stmt->get_result();
-$event = $res->fetch_assoc();
-$stmt->close();
+$event = $stmt->get_result()->fetch_assoc();
 
-if (!$event) {
-  http_response_code(404);
-  die("Event not found");
+if (!$event || ($event['status'] !== 'approved' && $role === 'student')) {
+  header('Location: ../dashboard_student.php');
+  exit;
 }
 
-// Students can't view unapproved events
-$role = Auth::role();
-if ($role === 'student' && ($event[EVENTS_STATUS_COL] ?? '') !== 'approved') {
-  http_response_code(403);
-  die("This event is not available.");
+$successMsg = $_SESSION['event_success'] ?? '';
+unset($_SESSION['event_success']);
+
+// Check if student is already joined
+$isJoined = false;
+$joinCount = 0;
+if ($role === 'student') {
+  $chk = $conn->prepare("SELECT id FROM event_registrations WHERE event_id=? AND student_id=?");
+  $chk->bind_param('ii', $id, $userId);
+  $chk->execute();
+  $isJoined = $chk->get_result()->num_rows > 0;
 }
+$cntResult = $conn->query("SELECT COUNT(*) as cnt FROM event_registrations WHERE event_id=$id");
+$joinCount = $cntResult ? $cntResult->fetch_assoc()['cnt'] : 0;
+
+$isOwner = ($role === 'admin') || ($event['created_by_type'] === 'teacher' && (int) $event['created_by_id'] === $userId);
+
+$backLink = match ($role) {
+  'admin' => '../dashboard_admin.php',
+  'teacher' => '../dashboard_teacher.php',
+  default => '../dashboard_student.php',
+};
 ?>
 <!doctype html>
 <html lang="en">
@@ -34,81 +73,40 @@ if ($role === 'student' && ($event[EVENTS_STATUS_COL] ?? '') !== 'approved') {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title><?= e($event['title']) ?> - Event Details</title>
+  <title><?= e($event['title']) ?></title>
   <link rel="stylesheet" href="../styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css"
     integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
-    .user-menu-wrapper {
-      position: relative;
+    .event-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
     }
 
-    .user-info {
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .user-info .arrow-icon {
-      margin-left: 0.5rem;
-      font-size: 0.75rem;
-      opacity: 0.6;
-      transition: var(--transition);
-    }
-
-    .user-menu-wrapper.active .user-info .arrow-icon {
-      transform: rotate(180deg);
-    }
-
-    .dropdown-menu {
-      position: absolute;
-      top: calc(100% + 0.75rem);
-      right: 0;
-      background: var(--bg-primary);
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-xl);
-      min-width: 220px;
-      display: none;
-      z-index: 1000;
-      overflow: hidden;
-    }
-
-    .user-menu-wrapper.active .dropdown-menu {
-      display: block;
-    }
-
-    .dropdown-menu a {
+    .event-meta-item {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      padding: 0.75rem 1rem;
-      color: var(--text-secondary);
-      text-decoration: none;
-      transition: var(--transition);
-      border-bottom: 1px solid var(--border-light);
-      font-size: 0.875rem;
-      font-weight: 500;
-      white-space: nowrap;
+      gap: 0.4rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
     }
 
-    .dropdown-menu a:last-child {
-      border-bottom: none;
+    .join-section {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
 
-    .dropdown-menu a:hover {
-      background: var(--bg-secondary);
-      color: var(--primary);
-    }
-
-    .dropdown-menu a i {
-      width: 1.25rem;
-      text-align: center;
-      opacity: 0.7;
-    }
-
-    .header-right .nav-links {
-      display: none;
+    .join-count {
+      color: var(--text-muted);
+      font-size: 0.9rem;
     }
   </style>
 </head>
@@ -121,117 +119,94 @@ if ($role === 'student' && ($event[EVENTS_STATUS_COL] ?? '') !== 'approved') {
           <h1>Event Management System</h1>
         </div>
         <div class="header-right">
-          <div class="user-menu-wrapper">
-            <div class="user-info">
-              <div class="user-avatar"><?= strtoupper(substr(Auth::name(), 0, 1)) ?></div>
-              <div>
-                <div><?= e(Auth::name()) ?></div>
-                <span class="user-role-badge badge-<?= e($role) ?>"><?= e($role) ?></span>
-              </div>
-              <i class="fas fa-chevron-down arrow-icon"></i>
-            </div>
-            <div class="dropdown-menu">
-              <?php if ($role === 'admin'): ?>
-                <a href="../dashboard_admin.php"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="../profile.php"><i class="fa-solid fa-user"></i> Profile</a>
-                <a href="create.php"><i class="fas fa-plus"></i> Create Event</a>
-                <a href="../admin_manage_users.php"><i class="fas fa-users-cog"></i> Manage Users</a>
-                <a href="../dashboard_student.php"><i class="fas fa-eye"></i> Student View</a>
-                <a href="../settings.php"><i class="fas fa-cog"></i> Settings</a>
-                <a href="../logout.php" style="color: var(--error);"><i class="fas fa-sign-out-alt"></i> Logout</a>
-              <?php elseif ($role === 'teacher'): ?>
-                <a href="../dashboard_teacher.php"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="../profile.php"><i class="fa-solid fa-user"></i> Profile</a>
-                <a href="create.php"><i class="fas fa-plus"></i> Create Event</a>
-                <a href="../settings.php"><i class="fas fa-cog"></i> Settings</a>
-                <a href="../logout.php" style="color: var(--error);"><i class="fas fa-sign-out-alt"></i> Logout</a>
-              <?php else: ?>
-                <a href="../dashboard_student.php"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="../profile.php"><i class="fa-solid fa-user"></i> Profile</a>
-                <a href="../settings.php"><i class="fas fa-cog"></i> Settings</a>
-                <a href="../logout.php" style="color: var(--error);"><i class="fas fa-sign-out-alt"></i> Logout</a>
-              <?php endif; ?>
-            </div>
-          </div>
+          <a href="<?= $backLink ?>" class="btn btn-outline btn-sm">
+            <i class="fas fa-arrow-left"></i> Back
+          </a>
         </div>
       </div>
     </header>
 
     <main>
-      <div class="back-button-container">
-        <a href="dashboard_admin.php" class="back-button">
-          <i class="fas fa-arrow-left"></i> Back
-        </a>
-      </div>
-      <div class="container container-sm">
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title"><?= e($event['title']) ?></h2>
-            <span class="badge badge-<?= e($event[EVENTS_STATUS_COL]) ?>">
-              <?= e(ucfirst($event[EVENTS_STATUS_COL])) ?>
-            </span>
-          </div>
+      <div class="container" style="max-width: 760px;">
+        <?php if ($successMsg): ?>
+          <div class="message message-success"><?= e($successMsg) ?></div>
+        <?php endif; ?>
 
+        <div class="card">
           <?php if (!empty($event['image'])): ?>
             <img src="../uploads/<?= e($event['image']) ?>" alt="<?= e($event['title']) ?>" class="card-image">
           <?php endif; ?>
 
-          <div class="card-body">
-            <p class="text-muted text-sm mb-2">
-              <i class="fas fa-calendar-alt"></i> Posted on
-              <?= date('F j, Y \a\t g:i A', strtotime($event['created_at'])) ?>
-            </p>
+          <div class="card-header"
+            style="border-bottom:none; padding-bottom:0.5rem; justify-content:space-between; align-items:flex-start;">
+            <h2 class="card-title" style="font-size:1.5rem;"><?= e($event['title']) ?></h2>
+            <span class="badge badge-<?= e($event['status']) ?>"><?= e(ucfirst($event['status'])) ?></span>
+          </div>
 
-            <div style="margin-top: 1.5rem; line-height: 1.8;">
-              <?= nl2br(e($event['description'])) ?>
+          <div class="event-meta">
+            <?php if (!empty($event['event_date'])): ?>
+              <div class="event-meta-item">
+                <i class="fas fa-calendar-alt" style="color:var(--primary);"></i>
+                <strong><?= date('F j, Y', strtotime($event['event_date'])) ?></strong>
+              </div>
+            <?php endif; ?>
+            <?php if (!empty($event['event_time'])): ?>
+              <div class="event-meta-item">
+                <i class="fas fa-clock" style="color:var(--primary);"></i>
+                <strong><?= date('g:i A', strtotime($event['event_time'])) ?></strong>
+              </div>
+            <?php endif; ?>
+            <?php if (!empty($event['creator_name'])): ?>
+              <div class="event-meta-item">
+                <i class="fas fa-user"></i> <?= e($event['creator_name']) ?>
+              </div>
+            <?php endif; ?>
+            <div class="event-meta-item">
+              <i class="fas fa-calendar-plus"></i> Posted <?= date('M j, Y', strtotime($event['created_at'])) ?>
             </div>
           </div>
 
-          <div class="card-footer">
-            <?php if (in_array($role, ['teacher', 'admin'])): ?>
-              <a href="edit.php?id=<?= (int) $event['id'] ?>" class="btn btn-sm">Edit Event</a>
-              <a href="delete.php?id=<?= (int) $event['id'] ?>" class="btn btn-sm btn-danger"
-                onclick="return confirm('Delete this event?');">Delete Event</a>
-            <?php endif; ?>
-
-            <?php if ($role === 'admin'): ?>
-              <?php if ($event[EVENTS_STATUS_COL] !== 'approved'): ?>
-                <a href="approve.php?id=<?= (int) $event['id'] ?>&action=approve" class="btn btn-sm btn-success">Ã¢Å“â€œ
-                  Approve</a>
-              <?php endif; ?>
-              <?php if ($event[EVENTS_STATUS_COL] !== 'rejected'): ?>
-                <a href="approve.php?id=<?= (int) $event['id'] ?>&action=reject" class="btn btn-sm btn-warning">Ã¢Å“â€” Reject</a>
-              <?php endif; ?>
-            <?php endif; ?>
+          <div class="card-body" style="padding:0;">
+            <p style="line-height:1.7; white-space:pre-wrap;"><?= e($event['description']) ?></p>
           </div>
+
+          <?php if ($role === 'student' && $event['status'] === 'approved'): ?>
+            <div class="join-section">
+              <form method="post" action="join.php">
+                <?= CSRF::field() ?>
+                <input type="hidden" name="event_id" value="<?= $id ?>">
+                <input type="hidden" name="action" value="<?= $isJoined ? 'leave' : 'join' ?>">
+                <button type="submit" class="btn <?= $isJoined ? 'btn-outline' : '' ?>">
+                  <?php if ($isJoined): ?>
+                    <i class="fas fa-times-circle"></i> Leave Event
+                  <?php else: ?>
+                    <i class="fas fa-check-circle"></i> Join Event
+                  <?php endif; ?>
+                </button>
+              </form>
+              <span class="join-count">
+                <i class="fas fa-users"></i> <?= $joinCount ?> student<?= $joinCount !== 1 ? 's' : '' ?> joined
+              </span>
+            </div>
+          <?php elseif ($role !== 'student'): ?>
+            <div class="join-section">
+              <span class="join-count">
+                <i class="fas fa-users"></i> <?= $joinCount ?> student<?= $joinCount !== 1 ? 's' : '' ?> joined
+              </span>
+            </div>
+          <?php endif; ?>
+
+          <?php if ($isOwner || $role === 'admin'): ?>
+            <div class="card-footer" style="margin-top:1.5rem;">
+              <a href="edit.php?id=<?= $id ?>" class="btn btn-sm btn-outline"><i class="fas fa-edit"></i> Edit</a>
+              <a href="delete.php?id=<?= $id ?>" class="btn btn-sm btn-danger"
+                onclick="return confirm('Delete this event?')"><i class="fas fa-trash-alt"></i> Delete</a>
+            </div>
+          <?php endif; ?>
         </div>
       </div>
     </main>
   </div>
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const userMenuWrapper = document.querySelector('.user-menu-wrapper');
-      const userInfo = document.querySelector('.user-info');
-
-      if (userMenuWrapper && userInfo) {
-        userInfo.addEventListener('click', function (e) {
-          e.stopPropagation();
-          userMenuWrapper.classList.toggle('active');
-        });
-
-        document.addEventListener('click', function (e) {
-          if (!userMenuWrapper.contains(e.target)) {
-            userMenuWrapper.classList.remove('active');
-          }
-        });
-      }
-    });
-
-    document.querySelector('.back-button')?.addEventListener('click', function (e) {
-      e.preventDefault();
-      window.history.back();
-    });
-  </script>
 </body>
 
 </html>

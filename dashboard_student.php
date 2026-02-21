@@ -12,14 +12,19 @@ function e($s)
   return htmlspecialchars((string) $s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-$sql = "SELECT id, title, description, image, created_at FROM events WHERE status = ? ORDER BY created_at DESC";
+$role = Auth::role();
+$userId = Auth::id();
+
+$sql = "SELECT e.id, e.title, e.description, e.image, e.created_at,
+        CASE WHEN er.student_id IS NOT NULL THEN 1 ELSE 0 END as is_joined
+        FROM events e
+        LEFT JOIN event_registrations er ON e.id = er.event_id AND er.student_id = ?
+        WHERE e.status = 'approved'
+        ORDER BY e.created_at DESC";
 $stmt = $conn->prepare($sql);
-$approved = 'approved';
-$stmt->bind_param('s', $approved);
+$stmt->bind_param('i', $userId);
 $stmt->execute();
 $result = $stmt->get_result();
-
-$role = Auth::role();
 ?>
 <!doctype html>
 <html lang="en">
@@ -171,11 +176,6 @@ $role = Auth::role();
       <?php endif; ?>
 
       <div class="container">
-        <div class="page-header">
-          <h2 class="page-title">Welcome, <?= e(Auth::name()) ?>!</h2>
-          <p class="page-subtitle">Discover the events happening in our school.</p>
-        </div>
-
         <?php if (!$result || $result->num_rows === 0): ?>
           <div class="card">
             <div class="empty-state">
@@ -189,27 +189,37 @@ $role = Auth::role();
             <?php while ($row = $result->fetch_assoc()): ?>
               <article class="card">
                 <?php if (!empty($row['image'])): ?>
-                  <img src="uploads/<?= e($row['image']) ?>" alt="<?= e($row['title']) ?>" class="card-image"
-                    style="margin: -1.5rem -1.5rem 1rem -1.5rem; border-radius: var(--radius-lg) var(--radius-lg) 0 0;">
+                  <img src="uploads/<?= e($row['image']) ?>" alt="<?= e($row['title']) ?>" class="card-image">
                 <?php endif; ?>
 
                 <div class="card-header" style="border-bottom: none; padding-bottom: 0.5rem;">
                   <h3 class="card-title"><?= e($row['title']) ?></h3>
-                  <span class="badge badge-approved">Approved</span>
                 </div>
 
                 <div class="card-body">
-                  <p class="text-muted text-sm mb-2">
-                    <i class="fas fa-calendar-alt"></i> <?= date('F j, Y', strtotime($row['created_at'])) ?>
-                  </p>
                   <p>
                     <?= nl2br(e(strlen($row['description']) > 150 ? substr($row['description'], 0, 150) . '...' : $row['description'])) ?>
                   </p>
                 </div>
 
-                <div class="card-footer">
-                  <a href="events/view.php?id=<?= (int) $row['id'] ?>" class="btn btn-sm" style="width: 100%;">View Details
-                    Ã¢â€ â€™</a>
+                <div class="card-footer" style="flex-direction: column; gap: 0.5rem;">
+                  <a href="events/view.php?id=<?= (int) $row['id'] ?>" class="btn btn-sm btn-outline"
+                    style="width: 100%;">View Details</a>
+                  <?php if ($role === 'student'): ?>
+                    <form method="post" action="events/join.php" style="width: 100%; margin: 0;">
+                      <?= CSRF::field() ?>
+                      <input type="hidden" name="event_id" value="<?= (int) $row['id'] ?>">
+                      <input type="hidden" name="action" value="<?= $row['is_joined'] ? 'leave' : 'join' ?>">
+                      <button type="submit" class="btn btn-sm"
+                        style="width: 100%; <?= $row['is_joined'] ? 'background: var(--success); color: #fff;' : '' ?>">
+                        <?php if ($row['is_joined']): ?>
+                          <i class="fas fa-check-circle"></i> Joined — Leave Event
+                        <?php else: ?>
+                          <i class="fas fa-plus-circle"></i> Join Event
+                        <?php endif; ?>
+                      </button>
+                    </form>
+                  <?php endif; ?>
                 </div>
               </article>
             <?php endwhile; ?>

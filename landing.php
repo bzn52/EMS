@@ -369,7 +369,6 @@ function e($s)
         }
 
         .user-card li:before {
-            content: "Ã¢Å“â€œ";
             position: absolute;
             left: 0;
             color: var(--success);

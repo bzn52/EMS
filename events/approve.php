@@ -4,8 +4,9 @@ require_once __DIR__ . '/events_common.php';
 Auth::requireLogin();
 Auth::requireRole('admin');
 
-function e($s) { 
-    return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); 
+function e($s)
+{
+    return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -18,7 +19,7 @@ if (!CSRF::validateToken($_POST['csrf_token'] ?? '')) {
     die("CSRF validation failed");
 }
 
-$id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 $action = $_POST['action'] ?? '';
 
 if (!$id || !in_array($action, ['approve', 'reject'], true)) {
@@ -46,7 +47,7 @@ $stmt->bind_param('sii', $newStatus, $approvedBy, $id);
 
 if ($stmt->execute()) {
     $stmt->close();
-    
+
     if (isset($_POST['return']) && $_POST['return'] === 'view') {
         header('Location: view.php?id=' . $id);
     } else {

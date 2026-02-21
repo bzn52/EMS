@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $u = $conn->prepare("UPDATE $table SET name = ?, email = ? WHERE id = ?");
         $u->bind_param('ssi', $newName, $newEmail, $uid);
       }
-      
+
       if ($u->execute()) {
         $messages[] = 'Profile updated successfully.';
         $_SESSION['user_name'] = $newName;
@@ -294,11 +294,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <?php elseif ($role === 'teacher'): ?>
                 <div class="form-group">
                   <label class="form-label">Department</label>
-                  <input type="text" name="department" value="<?= e($userRow['department'] ?? '') ?>" placeholder="e.g., Mathematics">
+                  <input type="text" name="department" value="<?= e($userRow['department'] ?? '') ?>"
+                    placeholder="e.g., Mathematics">
                 </div>
                 <div class="form-group">
                   <label class="form-label">Subjects Assigned</label>
-                  <input type="text" name="subjects" value="<?= e($userRow['subjects'] ?? '') ?>" placeholder="e.g., Algebra, Geometry">
+                  <input type="text" name="subjects" value="<?= e($userRow['subjects'] ?? '') ?>"
+                    placeholder="e.g., Algebra, Geometry">
                 </div>
               <?php endif; ?>
 
